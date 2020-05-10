@@ -24,11 +24,22 @@ class Node:
 		DO NOT EDIT ANYTHING ABOVE THIS LINE
 		'''
 		# Set value of the following variables appropriately to pass Intialization test
-		self.successor = None
-		self.predecessor = None
+		self.addr = (self.host, self.port)
+		self.successor = self.addr
+		self.predecessor = self.addr
 		# additional state variables
 
-
+	def lookup(self, my_id, key_id):
+		successor_hash = self.hasher(self.successor[0] + str(self.successor[1]))
+		if(my_id < successor_hash and successor_hash < key_id):
+			successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Establising a connection with successor
+			joinsocket.connect(joiningAddr)
+			joinsocket.send(("lookup " + str(key_id)).encode('utf-8')) # Sending key_id
+			predecessor = socket.recv(1024) # Waiting for predecessor address
+			return predecessor.decode('utf')
+		
+		else:
+			return self.successor
 
 	def hasher(self, key):
 		'''
@@ -39,11 +50,17 @@ class Node:
 		'''
 		return int(hashlib.md5(key.encode()).hexdigest(), 16) % self.N
 
-
 	def handleConnection(self, client, addr):
 		'''
 		 Function to handle each inbound connection, called as a thread from the listener.
 		'''
+		msg = client.recv(1024)
+		print("msggfffff",msg.decode('utf-8'))
+		# if msg.decode('utf-8') == "join":
+		# 	predecessor = self.lookup(self.hasher(self.addr[0] + str(self.addr[1])), self.hasher(addr[0] + str(addr[1])))
+		# elif msg.decode('utf-8').split(" ")[0] == "lookup":
+		# 	predecessor = self.lookup(self.hasher(self.addr[0] + str(self.addr[1])), int(msg.decode('utf-8').split(" ")[1]))
+
 
 	def listener(self):
 		'''
@@ -69,6 +86,14 @@ class Node:
 		This function handles the logic of a node joining. This function should do a lot of things such as:
 		Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
 		'''
+		# print("Testing",joiningAddr)
+		joinsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Establising a connection with node already present in DHT
+		if joiningAddr != "":
+			# print("Beofre connecting")
+			joinsocket.connect(joiningAddr)
+			# print('after connecting')
+			joinsocket.send("join".encode('utf-8')) # Sending join msg
+			predecessor = socket.recv(1024) # Waiting for predecessor address
 
 	def put(self, fileName):
 		'''
