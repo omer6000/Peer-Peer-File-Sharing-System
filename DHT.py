@@ -29,18 +29,20 @@ class Node:
 		self.predecessor = self.addr
 		# additional state variables
 
-	def lookup(self, my_id, key_id):
-		return self.successor
-		successor_hash = self.hasher(self.successor[0] + str(self.successor[1]))
-		if(my_id < successor_hash and successor_hash < key_id):
-			successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Establising a connection with successor
-			joinsocket.connect(self.successor)
-			joinsocket.send(("lookup " + str(key_id)).encode('utf-8')) # Sending key_id
-			predecessor = socket.recv(1024) # Waiting for predecessor address
-			return predecessor.decode('utf')
-		
+	def lookup(self, key_id):
+		n = self.hasher(self.successor[0] + str(self.successor[1]))
+		if self.key < n and n < key_id:
+			successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			successorsocket.connect(self.successor)
+			successorsocket.send(("lookup " + str(key_id)).encode('utf-8')) # msg sent to lookup condition in handleConnection
+			successor = successorsocket.recv(1024).decode('utf-8')
+			host = successor.split(" ")[0]
+			port = int(successor.split(" ")[1])
+			successorsocket.close()
+			return (host, port)
 		else:
 			return self.successor
+
 
 	def hasher(self, key):
 		'''
@@ -56,17 +58,23 @@ class Node:
 		 Function to handle each inbound connection, called as a thread from the listener.
 		'''
 
-		msg = client.recv(1024)
-		if msg.decode('utf-8').split(" ")[0] == "join":
+		msg = client.recv(1024).decode('utf-8')
+		msg_type = msg.split(" ")[0]
+		if msg_type == "join":
+			client_host = msg.split(" ")[1]
+			client_port = int(msg.split(" ")[2])
 			if self.successor == self.addr: # corner case 2 nodes
-				self.successor = (msg.decode('utf-8').split(" ")[1], int(msg.decode('utf-8').split(" ")[2]))
-				self.predecessor = (msg.decode('utf-8').split(" ")[1], int(msg.decode('utf-8').split(" ")[2]))
+				self.successor = (client_host, client_port)
+				self.predecessor = (client_host, client_port)
 				client.send("join2".encode('utf-8'))
 			else:
-				successor = self.lookup(self.hasher(self.addr[0] + str(self.addr[1])), self.hasher(addr[0] + str(addr[1])))
-				client.send((successor[0] + " " + str(successor[1])).encode('utf-8'))
-		# elif msg.decode('utf-8').split(" ")[0] == "lookup":
-		# 	predecessor = self.lookup(self.hasher(self.addr[0] + str(self.addr[1])), int(msg.decode('utf-8').split(" ")[1]))
+				key_id = self.hasher(client_host + str(client_port))
+				successor = self.lookup(key_id)
+				client.send((successor[0] + " " + str(successor[1])).encode('utf-8')) # msg sent back to join function
+		elif msg_type == "lookup":
+			key_id = int(msg.split(" ")[1])
+			successor = self.lookup(key_id)
+			client.send((successor[0] + " " + str(successor[1])).encode('utf-8')) # msg sent to lookup function
 		client.close()
 
 
@@ -97,15 +105,17 @@ class Node:
 		joinsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Establising a connection with node already present in DHT
 		if joiningAddr != "": # corner case 1 node if joiningAddr == ""
 			joinsocket.connect(joiningAddr)
-			joinsocket.send(("join " + self.addr[0] + " " + str(self.addr[1])).encode('utf-8')) # Sending join msg
+			joinsocket.send(("join " + self.host + " " + str(self.port)).encode('utf-8')) # Sending join msg
 			successor = joinsocket.recv(1024).decode('utf-8') # Waiting for predecessor address
 			if successor == "join2": # corner case 2 nodes
 				self.successor = joiningAddr
 				self.predecessor = joiningAddr
-			else:
-				self.successor = (successor.split(" ")[0], int(successor.split(" ")[1]))
+			else: # more than three nodes
+				host = successor.split(" ")[0]
+				port = int(successor.split(" ")[1])
+				self.successor = (host, port)
 		joinsocket.close()
-		# print(self.addr, self.predecessor, self.successor)
+		print(self.addr, self.key, joiningAddr)
 
 	def put(self, fileName):
 		'''
