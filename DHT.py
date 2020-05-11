@@ -41,10 +41,15 @@ class Node:
 			predecessorsocket.close()
 			if (host, port) != (self.host, self.port):
 				self.predecessor = (host, port)
-				update_predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				update_successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # send a message to predecessor so it can update its successor
+				update_successorsocket.connect(self.predecessor)
+				update_successorsocket.send(("successor_update " + self.host + " " + str(self.port)).encode('utf-8'))
+				update_successorsocket.close()
+				update_predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #send a message to successor so it can update its predecessor
 				update_predecessorsocket.connect(self.successor)
-				update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8'))
+				update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8')) 
 				update_predecessorsocket.close()
+
 
 	def lookup(self, key_id):
 		n = self.hasher(self.successor[0] + str(self.successor[1]))
@@ -101,6 +106,10 @@ class Node:
 			client_host = msg.split(" ")[1]
 			client_port = int(msg.split(" ")[2])
 			self.predecessor = (client_host, client_port)
+		elif msg_type == "successor_update":
+			client_host = msg.split(" ")[1]
+			client_port = int(msg.split(" ")[2])
+			self.successor = (client_host, client_port)
 		client.close()
 
 
