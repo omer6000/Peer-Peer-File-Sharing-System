@@ -57,9 +57,14 @@ class Node:
 		'''
 
 		msg = client.recv(1024)
-		if msg.decode('utf-8') == "join":
-			successor = self.lookup(self.hasher(self.addr[0] + str(self.addr[1])), self.hasher(addr[0] + str(addr[1])))
-			client.send((successor[0] + " " + str(successor[1])).encode('utf-8'))
+		if msg.decode('utf-8').split(" ")[0] == "join":
+			if self.successor == self.addr: # corner case 2 nodes
+				self.successor = (msg.decode('utf-8').split(" ")[1], int(msg.decode('utf-8').split(" ")[2]))
+				self.predecessor = (msg.decode('utf-8').split(" ")[1], int(msg.decode('utf-8').split(" ")[2]))
+				client.send("join2".encode('utf-8'))
+			else:
+				successor = self.lookup(self.hasher(self.addr[0] + str(self.addr[1])), self.hasher(addr[0] + str(addr[1])))
+				client.send((successor[0] + " " + str(successor[1])).encode('utf-8'))
 		# elif msg.decode('utf-8').split(" ")[0] == "lookup":
 		# 	predecessor = self.lookup(self.hasher(self.addr[0] + str(self.addr[1])), int(msg.decode('utf-8').split(" ")[1]))
 		client.close()
@@ -89,15 +94,18 @@ class Node:
 		This function handles the logic of a node joining. This function should do a lot of things such as:
 		Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
 		'''
-		# print("joining addr:",joiningAddr, "original addr: ", self.addr)
 		joinsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Establising a connection with node already present in DHT
-		if joiningAddr != "":
+		if joiningAddr != "": # corner case 1 node if joiningAddr == ""
 			joinsocket.connect(joiningAddr)
-			joinsocket.send("join".encode('utf-8')) # Sending join msg
+			joinsocket.send(("join " + self.addr[0] + " " + str(self.addr[1])).encode('utf-8')) # Sending join msg
 			successor = joinsocket.recv(1024).decode('utf-8') # Waiting for predecessor address
-			self.successor = (successor.split(" ")[0], int(successor.split(" ")[1]))
+			if successor == "join2": # corner case 2 nodes
+				self.successor = joiningAddr
+				self.predecessor = joiningAddr
+			else:
+				self.successor = (successor.split(" ")[0], int(successor.split(" ")[1]))
 		joinsocket.close()
-		# print(self.addr, self.successor)
+		# print(self.addr, self.predecessor, self.successor)
 
 	def put(self, fileName):
 		'''
