@@ -24,14 +24,32 @@ class Node:
 		DO NOT EDIT ANYTHING ABOVE THIS LINE
 		'''
 		# Set value of the following variables appropriately to pass Intialization test
-		self.addr = (self.host, self.port)
-		self.successor = self.addr
-		self.predecessor = self.addr
+		self.successor = (self.host, self.port)
+		self.predecessor = (self.host, self.port)
 		# additional state variables
+		threading.Thread(target = self.ping).start()
+
+	def ping(self):
+		while self.stop == False:
+			time.sleep(0.5)
+			predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			predecessorsocket.connect(self.successor)
+			predecessorsocket.send("predecessor_check".encode('utf-8'))
+			predecessor = predecessorsocket.recv(1024).decode('utf-8')
+			host = predecessor.split(" ")[0]
+			port = int(predecessor.split(" ")[1])
+			predecessorsocket.close()
+			if (host, port) != (self.host, self.port):
+				self.predecessor = (host, port)
+				update_predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				update_predecessorsocket.connect(self.successor)
+				update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8'))
+				update_predecessorsocket.close()
 
 	def lookup(self, key_id):
 		n = self.hasher(self.successor[0] + str(self.successor[1]))
-		if self.key < n and n < key_id:
+		# print(self.key,n,key_id)
+		if ((self.key < n) and (n < key_id)) or ((self.key < n) and (key_id < self.key)):
 			successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			successorsocket.connect(self.successor)
 			successorsocket.send(("lookup " + str(key_id)).encode('utf-8')) # msg sent to lookup condition in handleConnection
@@ -63,7 +81,7 @@ class Node:
 		if msg_type == "join":
 			client_host = msg.split(" ")[1]
 			client_port = int(msg.split(" ")[2])
-			if self.successor == self.addr: # corner case 2 nodes
+			if self.successor == (self.host, self.port): # corner case 2 nodes
 				self.successor = (client_host, client_port)
 				self.predecessor = (client_host, client_port)
 				client.send("join2".encode('utf-8'))
@@ -75,6 +93,14 @@ class Node:
 			key_id = int(msg.split(" ")[1])
 			successor = self.lookup(key_id)
 			client.send((successor[0] + " " + str(successor[1])).encode('utf-8')) # msg sent to lookup function
+		elif msg_type == "predecessor_check":
+			host = self.predecessor[0]
+			port = str(self.predecessor[1])
+			client.send((host +" " + port).encode('utf-8'))
+		elif msg_type == "predecessor_update":
+			client_host = msg.split(" ")[1]
+			client_port = int(msg.split(" ")[2])
+			self.predecessor = (client_host, client_port)
 		client.close()
 
 
@@ -115,7 +141,7 @@ class Node:
 				port = int(successor.split(" ")[1])
 				self.successor = (host, port)
 		joinsocket.close()
-		print(self.addr, self.key, joiningAddr)
+		# print(self.addr, self.key, joiningAddr, self.successor)
 
 	def put(self, fileName):
 		'''
