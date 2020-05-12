@@ -31,7 +31,7 @@ class Node:
 
 	def ping(self):
 		while self.stop == False:
-			time.sleep(0.5)
+			time.sleep(0.2)
 			predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			predecessorsocket.connect(self.successor)
 			predecessorsocket.send("predecessor_check".encode('utf-8'))
@@ -53,7 +53,13 @@ class Node:
 
 	def lookup(self, key_id):
 		n = self.hasher(self.successor[0] + str(self.successor[1]))
-		if (((self.key < n) and (n < key_id)) or ((self.key < n) and (key_id < self.key))):
+		if ((key_id > self.key) and (key_id < n)):
+			return self.successor
+		elif(self.key > n) and ((key_id < self.key) and (key_id < n)):
+			return self.successor
+		elif(self.key > n) and ((key_id > self.key) and (key_id > n)):
+			return self.successor
+		else:
 			successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			successorsocket.connect(self.successor)
 			successorsocket.send(("lookup " + str(key_id)).encode('utf-8')) # msg sent to lookup condition in handleConnection
@@ -62,19 +68,6 @@ class Node:
 			port = int(successor.split(" ")[1])
 			successorsocket.close()
 			return (host, port)
-		else:
-			return self.successor
-		# if(((key_id < n) and (key_id > self.key)) or ((key_id < self.key) and (key_id > n))):
-		# 	return self.successor
-		# else:
-		# 	successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		# 	successorsocket.connect(self.successor)
-		# 	successorsocket.send(("lookup " + str(key_id)).encode('utf-8')) # msg sent to lookup condition in handleConnection
-		# 	successor = successorsocket.recv(1024).decode('utf-8')
-		# 	host = successor.split(" ")[0]
-		# 	port = int(successor.split(" ")[1])
-		# 	successorsocket.close()
-		# 	return (host, port)
 
 
 	def hasher(self, key):
@@ -107,6 +100,7 @@ class Node:
 		elif msg_type == "lookup":
 			key_id = int(msg.split(" ")[1])
 			successor = self.lookup(key_id)
+			# print("answer:",successor)
 			client.send((successor[0] + " " + str(successor[1])).encode('utf-8')) # msg sent to lookup function
 		elif msg_type == "predecessor_check":
 			host = self.predecessor[0]
