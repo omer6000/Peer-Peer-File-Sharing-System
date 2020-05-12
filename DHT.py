@@ -113,11 +113,20 @@ class Node:
 			client_host = msg.split(" ")[1]
 			client_port = int(msg.split(" ")[2])
 			self.successor = (client_host, client_port)
-		elif msg_type == "sendfile":
+		elif msg_type == "putfile":
 			directory = self.host + "_" + str(self.port) + "/" + msg.split(" ")[1]
 			client.send("filename received".encode('utf-8'))
-			self.files.append(directory)
-			# self.recieveFile(client, directory)
+			self.files.append(msg.split(" ")[1])
+			self.recieveFile(client, directory)
+		elif msg_type == "getfile":
+			filename = msg.split(" ")[1]
+			directory = self.host + "_" + str(self.port) + "/" + msg.split(" ")[1]
+			if(filename in self.files):
+				client.send("present".encode('utf-8'))
+				# client.recv(1024)
+				self.sendFile(client, directory)
+			else:
+				client.send("absent".encode('utf-8'))
 		client.close()
 
 
@@ -170,10 +179,9 @@ class Node:
 		addr = self.lookup(file_key) # addr where we have to place the file
 		filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		filesocket.connect(addr)
-		filesocket.send(("sendfile " + fileName).encode('utf-8')) # sending filename
-		directory = self.host + "_" + str(self.port) + "/" + fileName
+		filesocket.send(("putfile " + fileName).encode('utf-8')) # sending file
 		filesocket.recv(1024)
-		# self.sendFile(filesocket, directory)
+		self.sendFile(filesocket, fileName)
 		filesocket.close()
 		
 	def get(self, fileName):
@@ -181,6 +189,23 @@ class Node:
 		This function finds node responsible for file given by fileName, gets the file from responsible node, saves it in current directory
 		i.e. "./file.py" and returns the name of file. If the file is not present on the network, return None.
 		'''
+		if fileName != "":
+			file_key = self.hasher(fileName)
+			addr = self.lookup(file_key)
+			filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			filesocket.connect(addr)
+			filesocket.send(("getfile " + fileName).encode('utf-8')) # fetching file
+			exist = filesocket.recv(1024).decode('utf-8')
+			if exist == "absent":
+				filesocket.close()
+				return None
+			else:
+				directory = self.host + "_" + str(self.port) + "/" + fileName
+				# filesocket.send("sendfile".encode('utf-8'))
+				self.recieveFile(filesocket, directory)
+				self.files.append(fileName)
+				filesocket.close()
+				return fileName
 
 		
 	def leave(self):
@@ -211,7 +236,11 @@ class Node:
 			Arguments:	soc => a socket object
 						fileName => file's name including its path e.g. NetCen/PA3/file.py
 		'''
+		print("Before receive")
+		# time.sleep(1)
 		fileSize = int(soc.recv(1024).decode('utf-8'))
+		print("After receive")
+		# time.sleep(1)
 		soc.send("ok".encode('utf-8'))
 		contentRecieved = 0
 		file = open(fileName, "wb")
