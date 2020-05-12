@@ -96,6 +96,7 @@ def testPutandGet(nodes, files):
 	for i in range(len(files)):
 		fileHashes.append(nodes[0].hasher(files[i]))
 		nodes[0].put(files[i])
+	# print(fileHashes)
 	time.sleep(1)
 	print ("Testing Put.")
 	correct = True

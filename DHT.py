@@ -31,7 +31,7 @@ class Node:
 
 	def ping(self):
 		while self.stop == False:
-			time.sleep(0.2)
+			time.sleep(0.5)
 			predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			predecessorsocket.connect(self.successor)
 			predecessorsocket.send("predecessor_check".encode('utf-8'))
@@ -53,11 +53,11 @@ class Node:
 
 	def lookup(self, key_id):
 		n = self.hasher(self.successor[0] + str(self.successor[1]))
-		if ((key_id > self.key) and (key_id < n)):
+		if ((key_id > self.key) and (key_id < n)): # successor has highest value and key being inserted has middle value
 			return self.successor
-		elif(self.key > n) and ((key_id < self.key) and (key_id < n)):
+		elif(self.key > n) and ((key_id < self.key) and (key_id < n)): # successor has smallest value and key being inserted has midddle value
 			return self.successor
-		elif(self.key > n) and ((key_id > self.key) and (key_id > n)):
+		elif(self.key > n) and ((key_id > self.key) and (key_id > n)): # successor has smallest value and key being inserted has the highest value
 			return self.successor
 		else:
 			successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -86,7 +86,7 @@ class Node:
 
 		msg = client.recv(1024).decode('utf-8')
 		msg_type = msg.split(" ")[0]
-		if msg_type == "join":
+		if msg_type == "join": # join request is received here
 			client_host = msg.split(" ")[1]
 			client_port = int(msg.split(" ")[2])
 			if self.successor == (self.host, self.port): # corner case 2 nodes
@@ -97,23 +97,27 @@ class Node:
 				key_id = self.hasher(client_host + str(client_port))
 				successor = self.lookup(key_id)
 				client.send((successor[0] + " " + str(successor[1])).encode('utf-8')) # msg sent back to join function
-		elif msg_type == "lookup":
+		elif msg_type == "lookup": # lookup request from the lookup function is received here
 			key_id = int(msg.split(" ")[1])
 			successor = self.lookup(key_id)
-			# print("answer:",successor)
 			client.send((successor[0] + " " + str(successor[1])).encode('utf-8')) # msg sent to lookup function
-		elif msg_type == "predecessor_check":
+		elif msg_type == "predecessor_check": # ping function is requesting for predecessor
 			host = self.predecessor[0]
 			port = str(self.predecessor[1])
 			client.send((host +" " + port).encode('utf-8'))
-		elif msg_type == "predecessor_update":
+		elif msg_type == "predecessor_update":  # ping function is telling you to update your predecessor
 			client_host = msg.split(" ")[1]
 			client_port = int(msg.split(" ")[2])
 			self.predecessor = (client_host, client_port)
-		elif msg_type == "successor_update":
+		elif msg_type == "successor_update":  # ping function is telling you to update your sucessor
 			client_host = msg.split(" ")[1]
 			client_port = int(msg.split(" ")[2])
 			self.successor = (client_host, client_port)
+		elif msg_type == "sendfile":
+			directory = self.host + "_" + str(self.port) + "/" + msg.split(" ")[1]
+			client.send("filename received".encode('utf-8'))
+			self.files.append(directory)
+			# self.recieveFile(client, directory)
 		client.close()
 
 
@@ -154,7 +158,6 @@ class Node:
 				port = int(successor.split(" ")[1])
 				self.successor = (host, port)
 		joinsocket.close()
-		# print(self.addr, self.key, joiningAddr, self.successor)
 
 	def put(self, fileName):
 		'''
@@ -162,6 +165,16 @@ class Node:
 		Responsible node should then replicate the file on appropriate node. SEE MANUAL FOR DETAILS. Responsible node should save the files
 		in directory given by host_port e.g. "localhost_20007/file.py".
 		'''
+	#	[3269, 20020, 12032, 13035, 12498, 51578, 56859, 33174] filehashes for port 3000
+		file_key = self.hasher(fileName) # hash key of file
+		addr = self.lookup(file_key) # addr where we have to place the file
+		filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		filesocket.connect(addr)
+		filesocket.send(("sendfile " + fileName).encode('utf-8')) # sending filename
+		directory = self.host + "_" + str(self.port) + "/" + fileName
+		filesocket.recv(1024)
+		# self.sendFile(filesocket, directory)
+		filesocket.close()
 		
 	def get(self, fileName):
 		'''
