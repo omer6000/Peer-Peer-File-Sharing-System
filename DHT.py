@@ -28,28 +28,35 @@ class Node:
 		self.predecessor = (self.host, self.port)
 		# additional state variables
 		threading.Thread(target = self.ping).start()
+		self.pingcount = 0
 
 	def ping(self):
 		while self.stop == False:
+			# if self.pingcount >= 3:
 			time.sleep(0.5)
 			predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			predecessorsocket.connect(self.successor)
 			predecessorsocket.send("predecessor_check".encode('utf-8'))
-			predecessor = predecessorsocket.recv(1024).decode('utf-8')
-			host = predecessor.split(" ")[0]
-			port = int(predecessor.split(" ")[1])
+			predecessorsocket.settimeout(0.5)
+			try:
+				self.pingcount = 0
+				predecessor = predecessorsocket.recv(1024).decode('utf-8')
+				host = predecessor.split(" ")[0]
+				port = int(predecessor.split(" ")[1])
+				if (host, port) != (self.host, self.port):
+					self.predecessor = (host, port)
+					update_successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # send a message to predecessor so it can update its successor
+					update_successorsocket.connect(self.predecessor)
+					update_successorsocket.send(("successor_update " + self.host + " " + str(self.port)).encode('utf-8'))
+					update_successorsocket.close()
+					update_predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #send a message to successor so it can update its predecessor
+					update_predecessorsocket.connect(self.successor)
+					update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8')) 
+					update_predecessorsocket.close()
+					self.rehash()
+			except socket.timeout:
+				self.pingcount += 1
 			predecessorsocket.close()
-			if (host, port) != (self.host, self.port):
-				self.predecessor = (host, port)
-				update_successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # send a message to predecessor so it can update its successor
-				update_successorsocket.connect(self.predecessor)
-				update_successorsocket.send(("successor_update " + self.host + " " + str(self.port)).encode('utf-8'))
-				update_successorsocket.close()
-				update_predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #send a message to successor so it can update its predecessor
-				update_predecessorsocket.connect(self.successor)
-				update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8')) 
-				update_predecessorsocket.close()
-				self.rehash()
 
 
 	def lookup(self, key_id):
@@ -138,29 +145,24 @@ class Node:
 				getsocket.close()
 			else:
 				client.send("absent".encode('utf-8'))
-		# elif msg_type == "call_rehash":
-		# 	self.rehash()
 		elif msg_type == "rehash":
 			# loop over file folder
 				# Rehash all those names and do lookup over those keys
 				# Establish a connection with the node
 				# Send file to the new node
 				# Delete file
-			self.backUpFiles = self.files
+			backUpFiles = self.files
 			self.files = []
-			# print("Before deleting",self.files)
-			for filename in self.backUpFiles:
+			for filename in backUpFiles:
 				directory = self.host + "_" + str(self.port) + "/" + filename
 				file_key = self.hasher(filename)
 				newnode = self.lookup(file_key)
-				# print(self.hasher(self.lookup(13035)[0] + str(self.lookup(13035)[1])))
 				rehashsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				rehashsocket.connect(newnode)
 				rehashsocket.send(("putfile " + filename).encode('utf-8'))
 				rehashsocket.recv(1024)
 				self.sendFile(rehashsocket, directory)
 				rehashsocket.close()
-			# print("After deleting",self.files)
 			deletedfiles = list(set(self.backUpFiles) - set(self.files))
 			for filename in deletedfiles:
 				directory = self.host + "_" + str(self.port) + "/" + filename
@@ -205,21 +207,13 @@ class Node:
 				host = successor.split(" ")[0]
 				port = int(successor.split(" ")[1])
 				self.successor = (host, port)
-			# rehashsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			# rehashsocket.connect(joiningAddr)
-			# rehashsocket.send("call_rehash ".encode('utf-8'))
-			# rehashsocket.close()
 		joinsocket.close()
 	
 	def rehash(self):
 		successorsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		successorsoc.connect(self.successor)
 		successorsoc.send("rehash ".encode('utf-8'))	
-		successorsoc.close()
-		# predecessorsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		# predecessorsoc.connect(self.predecessor)
-		# predecessorsoc.send("rehash ".encode('utf-8'))	
-		# predecessorsoc.close()	
+		successorsoc.close()	
 
 	def put(self, fileName):
 		'''
@@ -227,7 +221,7 @@ class Node:
 		Responsible node should then replicate the file on appropriate node. SEE MANUAL FOR DETAILS. Responsible node should save the files
 		in directory given by host_port e.g. "localhost_20007/file.py".
 		'''
-	#	[3269, 20020, 12032, 13035, 12498, 51578, 56859, 33174] filehashes for port 3000
+	#	[3269, 20020, 12032, 13035, 12498, 51578, 56859, 33174] filehashes
 		file_key = self.hasher(fileName) # hash key of file
 		addr = self.lookup(file_key) # addr where we have to place the file
 		filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -263,6 +257,27 @@ class Node:
 		it should send its share of file to the new responsible node, close all the threads and leave. You can close listener thread
 		by setting self.stop flag to True
 		'''
+		successor = self.successor
+		predecessor = self.predecessor
+		self.successor = (self.host, self.port)
+		self.predecessor = (self.host, self.port)
+		predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		predecessorsocket.connect(predecessor)
+		predecessorsocket.send(("successor_update " + successor[0] + " " + str(successor[1])).encode('utf-8'))
+		predecessorsocket.close()
+		successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		successorsocket.connect(successor)
+		successorsocket.send(("predecessor_update " + predecessor[0] + " " + str(predecessor[1])).encode('utf-8'))
+		successorsocket.close()
+
+		for filename in self.files:
+			filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			filesocket.connect(successor)
+			filesocket.send(("putfile " + filename).encode('utf-8')) # sending file
+			filesocket.recv(1024)
+			directory = self.host + "_" + str(self.port) + "/" + filename
+			self.sendFile(filesocket, directory)
+			filesocket.close()
 
 
 	def sendFile(self, soc, fileName):
