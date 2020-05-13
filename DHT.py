@@ -130,6 +130,11 @@ class Node:
 			client.send("filename received".encode('utf-8'))
 			self.files.append(msg.split(" ")[1])
 			self.recieveFile(client, directory)
+		elif msg_type == "backup":
+			directory = "backup_" + self.host + "_" + str(self.port) + "/" + msg.split(" ")[1]
+			client.send("filename received".encode('utf-8'))
+			self.backUpFiles.append(msg.split(" ")[1])
+			self.recieveFile(client, directory)
 		elif msg_type == "fileexist":
 			filename = msg.split(" ")[1]
 			directory = self.host + "_" + str(self.port) + "/" + msg.split(" ")[1]
@@ -167,6 +172,10 @@ class Node:
 			for filename in deletedfiles:
 				directory = self.host + "_" + str(self.port) + "/" + filename
 				os.remove(directory)
+		elif msg_type == "send_successor":
+			host = self.successor[0]
+			port = str(self.successor[1])
+			client.send((host + " " + port).encode('utf-8'))
 
 		client.close()
 
@@ -230,6 +239,24 @@ class Node:
 		filesocket.recv(1024)
 		self.sendFile(filesocket, fileName)
 		filesocket.close()
+
+		getsuccessorsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		getsuccessorsoc.connect(addr)
+		getsuccessorsoc.send("send_successor".encode('utf-8'))
+		successor = getsuccessorsoc.recv(1024).decode('utf-8')
+		getsuccessorsoc.close()
+
+		# print(successor)
+		# successorsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		# succesor_host = successor[0]
+		# successor_port = int(successor[1])
+		# s = successor.split(" ")[0], successor[1].split(" ")[1]
+		# print(s)
+		# successorsoc.connect((successor.split(" ")[0], int(successor.split(" ")[1])))
+		# successorsoc.send(("backup " + fileName).encode('utf-8'))
+		# successorsoc.recv(1024)
+		# self.sendFile(filesocket, fileName)
+		# successorsoc.close()
 		
 	def get(self, fileName):
 		'''
@@ -314,5 +341,3 @@ class Node:
 	def kill(self):
 		# DO NOT EDIT THIS, used for code testing
 		self.stop = True
-
-		
