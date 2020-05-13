@@ -126,6 +126,12 @@ def testPutandGet(nodes, files):
 	print ("All files retrieved successfully. \t(+3)")
 	points += 3
 	print ("\nPut and Get testing completed. Points: 10 / 10")
+	# print("Port:",nodes[0].port, "Key:",nodes[0].key, "Files:", list(map(nodes[0].hasher,nodes[0].files)))
+	# print("Port:",nodes[1].port, "Key:",nodes[1].key, "Files:", list(map(nodes[1].hasher,nodes[1].files)))
+	# print("Port:",nodes[2].port, "Key:",nodes[2].key, "Files:", list(map(nodes[2].hasher,nodes[2].files)))
+	# print("Port:",nodes[3].port, "Key:",nodes[3].key, "Files:", list(map(nodes[3].hasher,nodes[3].files)))
+	# print("Port:",nodes[4].port, "Key:",nodes[4].key, "Files:", list(map(nodes[4].hasher,nodes[4].files)))
+	
 	return points
 
 def testFileRehashing(nodes, files, sp):
@@ -138,13 +144,23 @@ def testFileRehashing(nodes, files, sp):
 		nodes.append(n1)
 		time.sleep(2)
 	nodes.sort(key=lambda x: x.key, reverse=False)
+	# print(nodes[0].key, nodes[1].key, nodes[2].key, nodes[3].key, nodes[4].key, nodes[5].key, nodes[6].key, nodes[7].key)
 	correct = True
 	print ("Checking if files rehashed correctly.")
+	# print("Port:",nodes[0].port, "Key:",nodes[0].key, "Files:", list(map(nodes[0].hasher,nodes[0].files)),nodes[0].hasher(nodes[0].successor[0] + str(nodes[0].successor[1])))
+	# print("Port:",nodes[1].port, "Key:",nodes[1].key, "Files:", list(map(nodes[1].hasher,nodes[1].files)),nodes[1].hasher(nodes[1].successor[0] + str(nodes[1].successor[1])))
+	# print("Port:",nodes[2].port, "Key:",nodes[2].key, "Files:", list(map(nodes[2].hasher,nodes[2].files)),nodes[2].hasher(nodes[2].successor[0] + str(nodes[2].successor[1])))
+	# print("Port:",nodes[3].port, "Key:",nodes[3].key, "Files:", list(map(nodes[3].hasher,nodes[3].files)),nodes[3].hasher(nodes[3].successor[0] + str(nodes[3].successor[1])))
+	# print("Port:",nodes[4].port, "Key:",nodes[4].key, "Files:", list(map(nodes[4].hasher,nodes[4].files)),nodes[4].hasher(nodes[4].successor[0] + str(nodes[4].successor[1])))
+	# print("Port:",nodes[5].port, "Key:",nodes[5].key, "Files:", list(map(nodes[5].hasher,nodes[5].files)),nodes[5].hasher(nodes[5].successor[0] + str(nodes[5].successor[1])))
+	# print("Port:",nodes[6].port, "Key:",nodes[6].key, "Files:", list(map(nodes[6].hasher,nodes[6].files)),nodes[6].hasher(nodes[6].successor[0] + str(nodes[6].successor[1])))
+	# print("Port:",nodes[7].port, "Key:",nodes[7].key, "Files:", list(map(nodes[7].hasher,nodes[7].files)),nodes[7].hasher(nodes[7].successor[0] + str(nodes[7].successor[1])))
 	for i in range(len(files)):
 		for j in range(len(nodes)):
 			if nodes[j].hasher(files[i]) <= nodes[j].key and nodes[j].hasher(files[i]) > nodes[j-1].key or nodes[j].hasher(files[i]) > nodes[-1].key and i == 0:
 				if files[i] not in nodes[j].files:
 					correct = False
+	
 	if correct:
 		print ("All files rehashed successfully. \t(+5)")
 	else:

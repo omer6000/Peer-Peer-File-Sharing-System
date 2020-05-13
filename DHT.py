@@ -49,6 +49,7 @@ class Node:
 				update_predecessorsocket.connect(self.successor)
 				update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8')) 
 				update_predecessorsocket.close()
+				self.rehash()
 
 
 	def lookup(self, key_id):
@@ -58,6 +59,10 @@ class Node:
 		elif(self.key > n) and ((key_id < self.key) and (key_id < n)): # successor has smallest value and key being inserted has midddle value
 			return self.successor
 		elif(self.key > n) and ((key_id > self.key) and (key_id > n)): # successor has smallest value and key being inserted has the highest value
+			return self.successor
+		elif key_id == self.key:
+			return (self.host, self.port)
+		elif key_id == n:
 			return self.successor
 		else:
 			successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -133,6 +138,33 @@ class Node:
 				getsocket.close()
 			else:
 				client.send("absent".encode('utf-8'))
+		# elif msg_type == "call_rehash":
+		# 	self.rehash()
+		elif msg_type == "rehash":
+			# loop over file folder
+				# Rehash all those names and do lookup over those keys
+				# Establish a connection with the node
+				# Send file to the new node
+				# Delete file
+			self.backUpFiles = self.files
+			self.files = []
+			# print("Before deleting",self.files)
+			for filename in self.backUpFiles:
+				directory = self.host + "_" + str(self.port) + "/" + filename
+				file_key = self.hasher(filename)
+				newnode = self.lookup(file_key)
+				# print(self.hasher(self.lookup(13035)[0] + str(self.lookup(13035)[1])))
+				rehashsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				rehashsocket.connect(newnode)
+				rehashsocket.send(("putfile " + filename).encode('utf-8'))
+				rehashsocket.recv(1024)
+				self.sendFile(rehashsocket, directory)
+				rehashsocket.close()
+			# print("After deleting",self.files)
+			deletedfiles = list(set(self.backUpFiles) - set(self.files))
+			for filename in deletedfiles:
+				directory = self.host + "_" + str(self.port) + "/" + filename
+				os.remove(directory)
 
 		client.close()
 
@@ -173,7 +205,21 @@ class Node:
 				host = successor.split(" ")[0]
 				port = int(successor.split(" ")[1])
 				self.successor = (host, port)
+			# rehashsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			# rehashsocket.connect(joiningAddr)
+			# rehashsocket.send("call_rehash ".encode('utf-8'))
+			# rehashsocket.close()
 		joinsocket.close()
+	
+	def rehash(self):
+		successorsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		successorsoc.connect(self.successor)
+		successorsoc.send("rehash ".encode('utf-8'))	
+		successorsoc.close()
+		# predecessorsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		# predecessorsoc.connect(self.predecessor)
+		# predecessorsoc.send("rehash ".encode('utf-8'))	
+		# predecessorsoc.close()	
 
 	def put(self, fileName):
 		'''
@@ -196,19 +242,19 @@ class Node:
 		This function finds node responsible for file given by fileName, gets the file from responsible node, saves it in current directory
 		i.e. "./file.py" and returns the name of file. If the file is not present on the network, return None.
 		'''
-		if fileName != "":
-			file_key = self.hasher(fileName)
-			addr = self.lookup(file_key)
-			filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			filesocket.connect(addr)
-			filesocket.send(("fileexist " + fileName + " " + self.host + " " + str(self.port)).encode('utf-8'))
-			exist = filesocket.recv(1024).decode('utf-8')
-			if exist == "absent":
-				filesocket.close()
-				return None
-			else:
-				filesocket.close()
-				return fileName
+
+		file_key = self.hasher(fileName)
+		addr = self.lookup(file_key)
+		filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		filesocket.connect(addr)
+		filesocket.send(("fileexist " + fileName + " " + self.host + " " + str(self.port)).encode('utf-8'))
+		exist = filesocket.recv(1024).decode('utf-8')
+		if exist == "absent":
+			filesocket.close()
+			return None
+		else:
+			filesocket.close()
+			return fileName
 
 		
 	def leave(self):
@@ -217,6 +263,7 @@ class Node:
 		it should send its share of file to the new responsible node, close all the threads and leave. You can close listener thread
 		by setting self.stop flag to True
 		'''
+
 
 	def sendFile(self, soc, fileName):
 		''' 
