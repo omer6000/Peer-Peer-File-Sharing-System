@@ -147,14 +147,14 @@ def testFileRehashing(nodes, files, sp):
 	# print(nodes[0].key, nodes[1].key, nodes[2].key, nodes[3].key, nodes[4].key, nodes[5].key, nodes[6].key, nodes[7].key)
 	correct = True
 	print ("Checking if files rehashed correctly.")
-	print("Port:",nodes[0].port, "Key:",nodes[0].key, "Files:", list(map(nodes[0].hasher,nodes[0].files)),list(map(nodes[0].hasher,nodes[0].backUpFiles)),nodes[0].hasher(nodes[0].predecessor[0] + str(nodes[0].predecessor[1])),nodes[0].hasher(nodes[0].successor[0] + str(nodes[0].successor[1])))
-	print("Port:",nodes[1].port, "Key:",nodes[1].key, "Files:", list(map(nodes[1].hasher,nodes[1].files)),list(map(nodes[1].hasher,nodes[1].backUpFiles)),nodes[1].hasher(nodes[1].predecessor[0] + str(nodes[1].predecessor[1])),nodes[1].hasher(nodes[1].successor[0] + str(nodes[1].successor[1])))
-	print("Port:",nodes[2].port, "Key:",nodes[2].key, "Files:", list(map(nodes[2].hasher,nodes[2].files)),list(map(nodes[2].hasher,nodes[2].backUpFiles)),nodes[2].hasher(nodes[2].predecessor[0] + str(nodes[2].predecessor[1])),nodes[2].hasher(nodes[2].successor[0] + str(nodes[2].successor[1])))
-	print("Port:",nodes[3].port, "Key:",nodes[3].key, "Files:", list(map(nodes[3].hasher,nodes[3].files)),list(map(nodes[3].hasher,nodes[3].backUpFiles)),nodes[3].hasher(nodes[3].predecessor[0] + str(nodes[3].predecessor[1])),nodes[3].hasher(nodes[3].successor[0] + str(nodes[3].successor[1])))
-	print("Port:",nodes[4].port, "Key:",nodes[4].key, "Files:", list(map(nodes[4].hasher,nodes[4].files)),list(map(nodes[4].hasher,nodes[4].backUpFiles)),nodes[4].hasher(nodes[4].predecessor[0] + str(nodes[4].predecessor[1])),nodes[4].hasher(nodes[4].successor[0] + str(nodes[4].successor[1])))
-	print("Port:",nodes[5].port, "Key:",nodes[5].key, "Files:", list(map(nodes[5].hasher,nodes[5].files)),list(map(nodes[5].hasher,nodes[5].backUpFiles)),nodes[5].hasher(nodes[5].predecessor[0] + str(nodes[5].predecessor[1])),nodes[5].hasher(nodes[5].successor[0] + str(nodes[5].successor[1])))
-	print("Port:",nodes[6].port, "Key:",nodes[6].key, "Files:", list(map(nodes[6].hasher,nodes[6].files)),list(map(nodes[6].hasher,nodes[6].backUpFiles)),nodes[6].hasher(nodes[6].predecessor[0] + str(nodes[6].predecessor[1])),nodes[6].hasher(nodes[6].successor[0] + str(nodes[6].successor[1])))
-	print("Port:",nodes[7].port, "Key:",nodes[7].key, "Files:", list(map(nodes[7].hasher,nodes[7].files)),list(map(nodes[7].hasher,nodes[7].backUpFiles)),nodes[7].hasher(nodes[7].predecessor[0] + str(nodes[7].predecessor[1])),nodes[7].hasher(nodes[7].successor[0] + str(nodes[7].successor[1])))
+	# print("Port:",nodes[0].port, "Key:",nodes[0].key, "Files:", list(map(nodes[0].hasher,nodes[0].files)),list(map(nodes[0].hasher,nodes[0].backUpFiles)),nodes[0].hasher(nodes[0].predecessor[0] + str(nodes[0].predecessor[1])),nodes[0].hasher(nodes[0].successor[0] + str(nodes[0].successor[1])))
+	# print("Port:",nodes[1].port, "Key:",nodes[1].key, "Files:", list(map(nodes[1].hasher,nodes[1].files)),list(map(nodes[1].hasher,nodes[1].backUpFiles)),nodes[1].hasher(nodes[1].predecessor[0] + str(nodes[1].predecessor[1])),nodes[1].hasher(nodes[1].successor[0] + str(nodes[1].successor[1])))
+	# print("Port:",nodes[2].port, "Key:",nodes[2].key, "Files:", list(map(nodes[2].hasher,nodes[2].files)),list(map(nodes[2].hasher,nodes[2].backUpFiles)),nodes[2].hasher(nodes[2].predecessor[0] + str(nodes[2].predecessor[1])),nodes[2].hasher(nodes[2].successor[0] + str(nodes[2].successor[1])))
+	# print("Port:",nodes[3].port, "Key:",nodes[3].key, "Files:", list(map(nodes[3].hasher,nodes[3].files)),list(map(nodes[3].hasher,nodes[3].backUpFiles)),nodes[3].hasher(nodes[3].predecessor[0] + str(nodes[3].predecessor[1])),nodes[3].hasher(nodes[3].successor[0] + str(nodes[3].successor[1])))
+	# print("Port:",nodes[4].port, "Key:",nodes[4].key, "Files:", list(map(nodes[4].hasher,nodes[4].files)),list(map(nodes[4].hasher,nodes[4].backUpFiles)),nodes[4].hasher(nodes[4].predecessor[0] + str(nodes[4].predecessor[1])),nodes[4].hasher(nodes[4].successor[0] + str(nodes[4].successor[1])))
+	# print("Port:",nodes[5].port, "Key:",nodes[5].key, "Files:", list(map(nodes[5].hasher,nodes[5].files)),list(map(nodes[5].hasher,nodes[5].backUpFiles)),nodes[5].hasher(nodes[5].predecessor[0] + str(nodes[5].predecessor[1])),nodes[5].hasher(nodes[5].successor[0] + str(nodes[5].successor[1])))
+	# print("Port:",nodes[6].port, "Key:",nodes[6].key, "Files:", list(map(nodes[6].hasher,nodes[6].files)),list(map(nodes[6].hasher,nodes[6].backUpFiles)),nodes[6].hasher(nodes[6].predecessor[0] + str(nodes[6].predecessor[1])),nodes[6].hasher(nodes[6].successor[0] + str(nodes[6].successor[1])))
+	# print("Port:",nodes[7].port, "Key:",nodes[7].key, "Files:", list(map(nodes[7].hasher,nodes[7].files)),list(map(nodes[7].hasher,nodes[7].backUpFiles)),nodes[7].hasher(nodes[7].predecessor[0] + str(nodes[7].predecessor[1])),nodes[7].hasher(nodes[7].successor[0] + str(nodes[7].successor[1])))
 	for i in range(len(files)):
 		for j in range(len(nodes)):
 			if nodes[j].hasher(files[i]) <= nodes[j].key and nodes[j].hasher(files[i]) > nodes[j-1].key or nodes[j].hasher(files[i]) > nodes[-1].key and i == 0:
@@ -212,7 +212,9 @@ def testFailureTolerance(nodes, files):
 	print ("\n\t --* Testing Failure Tolerance *--\n")
 	ind = 0
 	for i in range(len(nodes)):
-		print("Port:",nodes[i].port, "Key:",nodes[i].key, "Files:", list(map(nodes[i].hasher,nodes[i].files)),list(map(nodes[i].hasher,nodes[i].backUpFiles)),nodes[i].hasher(nodes[i].predecessor[0] + str(nodes[i].predecessor[1])),nodes[i].hasher(nodes[i].successor[0] + str(nodes[i].successor[1])))
+		# print("Port:",nodes[i].port, "Key:",nodes[i].key, "Files:", list(map(nodes[i].hasher,nodes[i].files)),list(map(nodes[i].hasher,nodes[i].backUpFiles)),
+		# nodes[i].hasher(nodes[i].predecessor[0] + str(nodes[i].predecessor[1])),
+		# nodes[i].hasher(nodes[i].grandsuccessor[0] + str(nodes[i].grandsuccessor[1])))
 		if files[0] in nodes[i].files:
 			ind = i
 	print ("Killing a node.")
@@ -221,7 +223,7 @@ def testFailureTolerance(nodes, files):
 	del nodes[ind]
 	correct = True
 	for i in range(len(nodes)):
-		print("Port:",nodes[i].port, "Key:",nodes[i].key, "Files:", list(map(nodes[i].hasher,nodes[i].files)),list(map(nodes[i].hasher,nodes[i].backUpFiles)),nodes[i].hasher(nodes[i].predecessor[0] + str(nodes[i].predecessor[1])),nodes[i].hasher(nodes[i].successor[0] + str(nodes[i].successor[1])))
+		# print("Port:",nodes[i].port, "Key:",nodes[i].key, "Files:", list(map(nodes[i].hasher,nodes[i].files)),list(map(nodes[i].hasher,nodes[i].backUpFiles)),nodes[i].hasher(nodes[i].predecessor[0] + str(nodes[i].predecessor[1])),nodes[i].hasher(nodes[i].successor[0] + str(nodes[i].successor[1])))
 		if nodes[i].successor == None:
 			correct = False
 		elif nodes[i].successor[1] == nodes[(i+1) % len(nodes)].port and nodes[i].predecessor[1] == nodes[i-1].port:

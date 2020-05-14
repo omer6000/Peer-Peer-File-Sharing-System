@@ -36,13 +36,9 @@ class Node:
 		update_predecessorsocket.connect(self.successor)
 		update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8')) 
 		update_predecessorsocket.close()
-		# mergebackupsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		# mergebackupsoc.connect(self.successor)
-		# mergebackupsoc.send("MergeBackup".encode('utf-8'))
-		# mergebackupsoc.close()
 	def ping(self):
 		while self.stop == False:
-			time.sleep(0.5)
+			time.sleep(0.3)
 			try:
 				predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				predecessorsocket.connect(self.successor)
@@ -50,15 +46,6 @@ class Node:
 				predecessor = predecessorsocket.recv(1024).decode('utf-8')
 				host = predecessor.split(" ")[0]
 				port = int(predecessor.split(" ")[1])
-				for filename in self.files: # Send files to successor so it can put in backup directory
-					backupsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-					backupsoc.connect(self.successor)
-					file_dict = {"files":self.files}
-					backupsoc.send(("backup " + filename + " " + dumps(file_dict)).encode('utf-8'))
-					backupsoc.recv(1024)
-					directory = self.host + "_" + str(self.port) + "/" + filename
-					self.sendFile(backupsoc, directory)
-					backupsoc.close()
 				if (host, port) != (self.host, self.port):
 					self.predecessor = (host, port)
 					update_successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # send a message to predecessor so it can update its successor
@@ -70,26 +57,32 @@ class Node:
 					update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8')) 
 					update_predecessorsocket.close()
 					self.rehash()
-					grandsucc_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-					grandsucc_soc.connect(self.successor)
-					grandsucc_soc.send("GrandSuccessor ".encode('utf-8'))
-					grandsucc = grandsucc_soc.recv(1024).decode('utf-8')
-					grandsucc_host = grandsucc.split(" ")[0]
-					grandsucc_port = int(grandsucc.split(" ")[1])
-					self.grandsuccessor = (grandsucc_host, grandsucc_port)
+				for filename in self.files: # Send files to successor so it can put in backup directory
+					backupsoc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+					backupsoc.connect(self.successor)
+					file_dict = {"files":self.files}
+					backupsoc.send(("backup " + filename + " " + dumps(file_dict)).encode('utf-8'))
+					backupsoc.recv(1024)
+					directory = self.host + "_" + str(self.port) + "/" + filename
+					self.sendFile(backupsoc, directory)
+					backupsoc.close()
 				predecessorsocket.close()
 			except socket.error:
-				predecessorsocket.close()
 				self.successor = self.grandsuccessor
 				self.update_successor()
-				# print(self.key, self.grandsuccessor)
-				# try:
-				# 	self.successor = self.grandsuccessor
-				# 	self.update_successor()
-				# except:
-				# 	pass
-
-
+				predecessorsocket.close()
+				self.rehash_backup()
+			try:
+				grandsucc_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				grandsucc_soc.connect(self.successor)
+				grandsucc_soc.send("GrandSuccessor ".encode('utf-8'))
+				grandsucc = grandsucc_soc.recv(1024).decode('utf-8')
+				grandsucc_host = grandsucc.split(" ")[0]
+				grandsucc_port = int(grandsucc.split(" ")[1])
+				self.grandsuccessor = (grandsucc_host, grandsucc_port)
+				grandsucc_soc.close()
+			except:
+				grandsucc_soc.close()
 	def lookup(self, key_id):
 		n = self.hasher(self.successor[0] + str(self.successor[1]))
 		if ((key_id > self.key) and (key_id < n)): # successor has highest value and key being inserted has middle value
@@ -173,7 +166,10 @@ class Node:
 			self.backUpFiles = file_dict["files"]
 			directory = "Backup_" + self.host + "_" + str(self.port) + "/" + filename
 			client.send("filename received".encode('utf-8'))
-			self.recieveFile(client, directory)
+			try:
+				self.recieveFile(client, directory)
+			except:
+				pass
 		elif msg_type == "fileexist":
 			filename = msg.split(" ")[1]
 			directory = self.host + "_" + str(self.port) + "/" + msg.split(" ")[1]
@@ -189,7 +185,20 @@ class Node:
 				getsocket.close()
 			else:
 				client.send("absent".encode('utf-8'))
-		# elif msg_type == "rehash_backup"
+		elif msg_type == "rehash_backup":
+			backUpFiles = self.backUpFiles
+			self.backUpFiles = []
+			for filename in backUpFiles:
+				directory = "Backup_" + self.host + "_" + str(self.port) + "/" + filename
+				file_key = self.hasher(filename)
+				newnode = self.lookup(file_key)
+				rehashsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				rehashsocket.connect(newnode)
+				rehashsocket.send(("putfile " + filename).encode('utf-8'))
+				rehashsocket.recv(1024)
+				self.sendFile(rehashsocket, directory)
+				rehashsocket.close()
+
 		elif msg_type == "rehash":
 			# loop over file folder
 				# Rehash all those names and do lookup over those keys
@@ -203,12 +212,15 @@ class Node:
 				directory = self.host + "_" + str(self.port) + "/" + filename
 				file_key = self.hasher(filename)
 				newnode = self.lookup(file_key)
-				rehashsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				rehashsocket.connect(newnode)
-				rehashsocket.send(("putfile " + filename).encode('utf-8'))
-				rehashsocket.recv(1024)
-				self.sendFile(rehashsocket, directory)
-				rehashsocket.close()
+				try:
+					rehashsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+					rehashsocket.connect(newnode)
+					rehashsocket.send(("putfile " + filename).encode('utf-8'))
+					rehashsocket.recv(1024)
+					self.sendFile(rehashsocket, directory)
+					rehashsocket.close()
+				except:
+					pass
 			# deletedfiles = list(set(backUpFiles) - set(self.files))
 			# for filename in deletedfiles:
 			# 	directory = self.host + "_" + str(self.port) + "/" + filename
@@ -239,7 +251,7 @@ class Node:
 		while not self.stop:
 			client, addr = listener.accept()
 			threading.Thread(target = self.handleConnection, args = (client, addr)).start()
-		print ("Shutting down node:", self.host, self.port, self.key)
+		print ("Shutting down node:", self.host, self.port)
 		try:
 			listener.shutdown(2)
 			listener.close()
@@ -290,7 +302,6 @@ class Node:
 		filesocket.connect(addr)
 		filesocket.send(("putfile " + fileName).encode('utf-8')) # sending file
 		filesocket.recv(1024)
-		# print("1",fileName)
 		self.sendFile(filesocket, fileName)
 		filesocket.close()
 
@@ -322,17 +333,12 @@ class Node:
 		'''
 		successor = self.successor
 		predecessor = self.predecessor
-		grandsuccessor = self.grandsuccessor
 		self.successor = (self.host, self.port)
 		self.predecessor = (self.host, self.port)
 		self.grandsuccessor = (self.host, self.port)
 		predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		predecessorsocket.connect(predecessor)
 		predecessorsocket.send(("successor_update " + successor[0] + " " + str(successor[1])).encode('utf-8'))
-		predecessorsocket.close()
-		predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		predecessorsocket.connect(predecessor)
-		predecessorsocket.send(("grandsuccessor_update " + grandsuccessor[0] + " " + str(grandsuccessor[1])).encode('utf-8'))
 		predecessorsocket.close()
 		successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		successorsocket.connect(successor)
