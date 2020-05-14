@@ -85,17 +85,14 @@ class Node:
 				grandsucc_soc.close()
 	def lookup(self, key_id):
 		n = self.hasher(self.successor[0] + str(self.successor[1]))
-		if ((key_id > self.key) and (key_id < n)): # successor has highest value and key being inserted has middle value
-			return self.successor
-		elif(self.key > n) and ((key_id < self.key) and (key_id < n)): # successor has smallest value and key being inserted has midddle value
-			return self.successor
-		elif(self.key > n) and ((key_id > self.key) and (key_id > n)): # successor has smallest value and key being inserted has the highest value
-			return self.successor
-		elif key_id == self.key:
+		if (key_id > self.key and key_id < n) or key_id == n: # For example, 2000, 5000, 7000 or 2000, 7000, 7000
+			return self.successor 
+		elif self.key > n and ((key_id < self.key and key_id < n) or (key_id > self.key and key_id > n)): # For example, 8000, 7000, 5000 or 5000, 20000, 2000
+			return self.successor 
+		elif key_id == self.key: # File hashes exactly to the node
 			return (self.host, self.port)
-		elif key_id == n:
-			return self.successor
 		else:
+			# Ask your successor to continue the lookup
 			successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			successorsocket.connect(self.successor)
 			successorsocket.send(("lookup " + str(key_id)).encode('utf-8')) # msg sent to lookup condition in handleConnection
@@ -221,10 +218,6 @@ class Node:
 					rehashsocket.close()
 				except:
 					pass
-			# deletedfiles = list(set(backUpFiles) - set(self.files))
-			# for filename in deletedfiles:
-			# 	directory = self.host + "_" + str(self.port) + "/" + filename
-			# 	os.remove(directory)
 		elif msg_type == "send_successor": # put function is requesting for successor
 			host = self.successor[0]
 			port = str(self.successor[1])
@@ -333,19 +326,20 @@ class Node:
 		'''
 		successor = self.successor
 		predecessor = self.predecessor
-		self.successor = (self.host, self.port)
+		self.successor = (self.host, self.port) 
 		self.predecessor = (self.host, self.port)
 		self.grandsuccessor = (self.host, self.port)
+		# Above lines are removing the node from the ring
 		predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		predecessorsocket.connect(predecessor)
-		predecessorsocket.send(("successor_update " + successor[0] + " " + str(successor[1])).encode('utf-8'))
+		predecessorsocket.send(("successor_update " + successor[0] + " " + str(successor[1])).encode('utf-8')) # Telling the predecessor to update its successor
 		predecessorsocket.close()
 		successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		successorsocket.connect(successor)
-		successorsocket.send(("predecessor_update " + predecessor[0] + " " + str(predecessor[1])).encode('utf-8'))
+		successorsocket.send(("predecessor_update " + predecessor[0] + " " + str(predecessor[1])).encode('utf-8')) # Telling the successor to update its predecessor
 		successorsocket.close()
 
-		for filename in self.files:
+		for filename in self.files: # Distributing files stored in the node
 			filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			filesocket.connect(successor)
 			filesocket.send(("putfile " + filename).encode('utf-8')) # sending file
@@ -353,7 +347,9 @@ class Node:
 			directory = self.host + "_" + str(self.port) + "/" + filename
 			self.sendFile(filesocket, directory)
 			filesocket.close()
-
+		
+		time.sleep(1)
+		self.kill() # Stopping the thread
 
 	def sendFile(self, soc, fileName):
 		''' 
