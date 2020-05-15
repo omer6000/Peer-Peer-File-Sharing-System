@@ -32,11 +32,23 @@ class Node:
 		os.mkdir("Backup_" + self.host + "_" + str(self.port))
 		self.pingCounter = 0
 	
-	def update_successor(self):
+	
+	def distribute_files(self): # Distributing files after the node leaves
+		for filename in self.files:
+			filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			filesocket.connect(self.successor)
+			filesocket.send(("putfile " + filename).encode('utf-8')) # sending file
+			filesocket.recv(1024)
+			directory = self.host + "_" + str(self.port) + "/" + filename
+			self.sendFile(filesocket, directory)
+			filesocket.close()
+	
+	def tweak_successor(self): # When a node fails. Update the successor to grand successor
 		update_predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #send a message to successor so it can update its predecessor
 		update_predecessorsocket.connect(self.successor)
 		update_predecessorsocket.send(("predecessor_update " + self.host + " " + str(self.port)).encode('utf-8')) 
 		update_predecessorsocket.close()
+	
 	def ping(self):
 		while self.stop == False:
 			time.sleep(0.3)
@@ -76,11 +88,11 @@ class Node:
 						backupsoc.close()
 				predecessorsocket.close()
 				self.pingCounter = 0
-			except socket.error:
+			except:
 				self.pingCounter += 1
 				if self.pingCounter > 2:
 					self.successor = self.grandsuccessor
-					self.update_successor()
+					self.tweak_successor()
 					predecessorsocket.close()
 					self.rehash_backup()
 			try:
@@ -190,9 +202,9 @@ class Node:
 			else:
 				client.send("absent".encode('utf-8'))
 		elif msg_type == "rehash_backup": # Rehash backup files after the node leaves
-			backUpFiles = self.backUpFiles
+			tempfiles = self.backUpFiles
 			self.backUpFiles = []
-			for filename in backUpFiles:
+			for filename in tempfiles:
 				directory = "Backup_" + self.host + "_" + str(self.port) + "/" + filename
 				file_key = self.hasher(filename)
 				newnode = self.lookup(file_key)
@@ -209,10 +221,10 @@ class Node:
 				# Establish a connection with the node
 				# Send file to the new node
 				# Delete file
-			backUpFiles = self.files
+			tempfiles = self.files
 			self.files = []
 			self.backUpFiles = []
-			for filename in backUpFiles:
+			for filename in tempfiles:
 				directory = self.host + "_" + str(self.port) + "/" + filename
 				file_key = self.hasher(filename)
 				newnode = self.lookup(file_key)
@@ -293,14 +305,18 @@ class Node:
 		in directory given by host_port e.g. "localhost_20007/file.py".
 		'''
 	#	[3269, 20020, 12032, 13035, 12498, 51578, 56859, 33174] filehashes
-		file_key = self.hasher(fileName) # hash key of file
-		addr = self.lookup(file_key) # addr where we have to place the file
-		filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		filesocket.connect(addr)
-		filesocket.send(("putfile " + fileName).encode('utf-8')) # sending file
-		filesocket.recv(1024)
-		self.sendFile(filesocket, fileName)
-		filesocket.close()
+		if fileName == "":
+			return
+		else:
+			file_key = self.hasher(fileName) # hash key of file
+			addr = self.lookup(file_key) # addr where we have to place the file
+			filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			filesocket.connect(addr)
+			filesocket.send(("putfile " + fileName).encode('utf-8')) # sending file
+			filesocket.recv(1024)
+			self.sendFile(filesocket, fileName)
+			filesocket.close()
+			return
 
 	def get(self, fileName):
 		'''
@@ -308,52 +324,41 @@ class Node:
 		i.e. "./file.py" and returns the name of file. If the file is not present on the network, return None.
 		'''
 
-		file_key = self.hasher(fileName)
-		addr = self.lookup(file_key)
-		filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		filesocket.connect(addr)
-		filesocket.send(("fileexist " + fileName + " " + self.host + " " + str(self.port)).encode('utf-8'))
-		exist = filesocket.recv(1024).decode('utf-8')
-		if exist == "absent":
-			filesocket.close()
-			return None
+		if fileName == "":
+			return
 		else:
-			filesocket.close()
-			return fileName
+			file_key = self.hasher(fileName)
+			addr = self.lookup(file_key)
+			filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			filesocket.connect(addr)
+			filesocket.send(("fileexist " + fileName + " " + self.host + " " + str(self.port)).encode('utf-8'))
+			exist = filesocket.recv(1024).decode('utf-8')
+			if exist == "absent":
+				filesocket.close()
+				return None
+			else:
+				filesocket.close()
+				return fileName
 
-		
 	def leave(self):
 		'''
 		When called leave, a node should gracefully leave the network i.e. it should update its predecessor that it is leaving
 		it should send its share of file to the new responsible node, close all the threads and leave. You can close listener thread
 		by setting self.stop flag to True
 		'''
-		successor = self.successor
-		predecessor = self.predecessor
-		self.successor = (self.host, self.port) 
-		self.predecessor = (self.host, self.port)
-		self.grandsuccessor = (self.host, self.port)
-		# Above lines are removing the node from the ring
 		predecessorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		predecessorsocket.connect(predecessor)
-		predecessorsocket.send(("successor_update " + successor[0] + " " + str(successor[1])).encode('utf-8')) # Telling the predecessor to update its successor
+		predecessorsocket.connect(self.predecessor)
+		predecessorsocket.send(("successor_update " + self.successor[0] + " " + str(self.successor[1])).encode('utf-8')) # Telling the predecessor to update its successor
 		predecessorsocket.close()
 		successorsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		successorsocket.connect(successor)
-		successorsocket.send(("predecessor_update " + predecessor[0] + " " + str(predecessor[1])).encode('utf-8')) # Telling the successor to update its predecessor
+		successorsocket.connect(self.successor)
+		successorsocket.send(("predecessor_update " + self.predecessor[0] + " " + str(self.predecessor[1])).encode('utf-8')) # Telling the successor to update its predecessor
 		successorsocket.close()
-
-		for filename in self.files: # Distributing files stored in the node
-			filesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			filesocket.connect(successor)
-			filesocket.send(("putfile " + filename).encode('utf-8')) # sending file
-			filesocket.recv(1024)
-			directory = self.host + "_" + str(self.port) + "/" + filename
-			self.sendFile(filesocket, directory)
-			filesocket.close()
-		
+		self.distribute_files()
+		self.files = []
+		self.backUpFiles = []
 		time.sleep(1)
-		self.kill() # Stopping the thread
+		self.kill() # Stopping the thread and the ping function
 
 	def sendFile(self, soc, fileName):
 		''' 

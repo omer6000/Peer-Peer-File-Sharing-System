@@ -223,7 +223,7 @@ def testFailureTolerance(nodes, files):
 	del nodes[ind]
 	correct = True
 	for i in range(len(nodes)):
-		# print("Port:",nodes[i].port, "Key:",nodes[i].key, "Files:", list(map(nodes[i].hasher,nodes[i].files)),list(map(nodes[i].hasher,nodes[i].backUpFiles)),nodes[i].hasher(nodes[i].predecessor[0] + str(nodes[i].predecessor[1])),nodes[i].hasher(nodes[i].successor[0] + str(nodes[i].successor[1])))
+		print("Port:",nodes[i].port, "Key:",nodes[i].key, "Files:", list(map(nodes[i].hasher,nodes[i].files)),list(map(nodes[i].hasher,nodes[i].backUpFiles)),nodes[i].hasher(nodes[i].predecessor[0] + str(nodes[i].predecessor[1])),nodes[i].hasher(nodes[i].successor[0] + str(nodes[i].successor[1])))
 		if nodes[i].successor == None:
 			correct = False
 		elif nodes[i].successor[1] == nodes[(i+1) % len(nodes)].port and nodes[i].predecessor[1] == nodes[i-1].port:
